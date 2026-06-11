@@ -66,6 +66,18 @@ if "score" not in st.session_state:
 if "badges" not in st.session_state:
     st.session_state.badges = []
 
+# selected_option: 当前选中的答案选项
+if "selected_option" not in st.session_state:
+    st.session_state.selected_option = None
+
+# wrong_attempts: 当前关卡错误尝试次数
+if "wrong_attempts" not in st.session_state:
+    st.session_state.wrong_attempts = 0
+
+# show_result: 是否显示答案结果
+if "show_result" not in st.session_state:
+    st.session_state.show_result = False
+
 
 # ============================================================
 # 辅助函数
@@ -75,6 +87,8 @@ def reset_game():
     st.session_state.current_level = 0
     st.session_state.score = 0
     st.session_state.badges = []
+    st.session_state.wrong_attempts = 0
+    st.session_state.show_result = False
     st.rerun()
 
 
@@ -273,10 +287,10 @@ st.markdown("---")
 current_idx = st.session_state.current_level
 levels_count = len(st.session_state.levels)
 
-# 进度条
+# 进度条（从1开始显示）
 if levels_count > 0:
     progress_ratio = current_idx / levels_count
-    st.progress(progress_ratio, text=f"关卡进度: 第 {current_idx} / {levels_count} 关")
+    st.progress(progress_ratio, text=f"关卡进度: 第 {current_idx + 1} / {levels_count} 关")
 else:
     st.progress(0, text="关卡进度: 0 / 0 关")
 
@@ -287,10 +301,9 @@ with col1:
 with col2:
     st.markdown("**🏅 已获徽章**")
     if st.session_state.badges:
-        for badge in st.session_state.badges:
-            st.markdown(f"    {badge}")
+        st.markdown(" ".join([f"**{badge}**" for badge in st.session_state.badges]))
     else:
-        st.markdown("    暂无徽章")
+        st.markdown("暂无徽章")
 
 st.markdown("---")
 
@@ -309,68 +322,118 @@ if levels_count == 0:
 elif st.session_state.current_level >= levels_count:
     # ---- 通关画面 ----
     st.balloons()
-    st.success("🎉 恭喜通关! 🎉", icon="✅")
-    st.markdown(f"""
-    ### 游戏完成总结
-    - **最终得分**: {st.session_state.score} 分（满分 {levels_count * POINTS_PER_LEVEL} 分）
-    - **获得徽章**: {len(st.session_state.badges)} 个
-    """)
-    if st.session_state.badges:
-        st.markdown("**徽章墙:**")
-        cols = st.columns(len(st.session_state.badges))
-        for i, badge in enumerate(st.session_state.badges):
-            with cols[i]:
-                st.markdown(f"<h3 style='text-align: center;'>{badge}</h3>", unsafe_allow_html=True)
+    with st.container(border=True):
+        st.success("🎉 恭喜通关! 🎉", icon="✅")
+        st.markdown(f"""
+        ### 游戏完成总结
+        - **最终得分**: {st.session_state.score} 分（满分 {levels_count * POINTS_PER_LEVEL} 分）
+        - **获得徽章**: {len(st.session_state.badges)} 个
+        """)
+        if st.session_state.badges:
+            st.markdown("**徽章墙:**")
+            cols = st.columns(len(st.session_state.badges))
+            for i, badge in enumerate(st.session_state.badges):
+                with cols[i]:
+                    st.markdown(f"<h3 style='text-align: center;'>{badge}</h3>", unsafe_allow_html=True)
     st.markdown("---")
-    st.info("点击侧边栏重新开始按钮可以再来一轮!")
+    if st.button("🔄 再来一次", type="primary", use_container_width=True):
+        reset_game()
 
 else:
     # ---- 当前关卡内容 ----
     level = st.session_state.levels[current_idx]
 
-    # 关卡标题
-    st.subheader(f"### {level['title']}")
+    # 使用卡片样式包装关卡内容
+    with st.container(border=True):
+        # 关卡标题
+        st.subheader(f"### {level['title']}")
 
-    # 问题描述（支持 Markdown 和代码块）
-    st.markdown("**问题:**")
-    st.markdown(level["question"])
+        # 问题描述（支持 Markdown 和代码块）
+        st.markdown("**问题:**")
+        st.markdown(level["question"])
 
-    # 选项列表
-    st.markdown("**请选择答案:**")
+        # 选项列表
+        st.markdown("**请选择答案:**")
 
-    # 确保 radio 的 index 有效
-    if "selected_option" not in st.session_state:
-        st.session_state.selected_option = None
-
-    selected = st.radio(
-        label="选项",
-        options=level["options"],
-        index=0,
-        label_visibility="collapsed"
-    )
-
-    # 提交按钮
-    st.markdown("")
-    if st.button("提交答案", type="primary", use_container_width=True):
-        if selected == level["answer"]:
-            # ---- 答对 ----
-            st.success("🎊 回答正确!", icon="✅")
-
-            # 增加得分
-            st.session_state.score += POINTS_PER_LEVEL
-
-            # 获得徽章
-            reward = level["reward"]
-            if reward not in st.session_state.badges:
-                st.session_state.badges.append(reward)
-
-            # 显示获得徽章提示
-            st.info(f"恭喜获得: {reward}")
-
-            # 进入下一关
-            st.session_state.current_level += 1
-            st.rerun()
+        # 获取当前选中的选项索引（保持选择状态）
+        if st.session_state.selected_option in level["options"]:
+            default_index = level["options"].index(st.session_state.selected_option)
         else:
-            # ---- 答错 ----
-            st.error("回答错误，请重新选择答案!", icon="🚫")
-            st.warning("提示: 仔细想想，再试一次 😊")
+            default_index = 0
+
+        selected = st.radio(
+            label="选项",
+            options=level["options"],
+            index=default_index,
+            label_visibility="collapsed",
+            disabled=st.session_state.show_result  # 答案展示时禁用选择
+        )
+        
+        # 保存选中的选项到 session_state
+        st.session_state.selected_option = selected
+
+        # 判断是否显示答案结果
+        if st.session_state.show_result:
+            # ---- 答案展示环节 ----
+            st.markdown("---")
+            st.markdown("### 📝 答案解析")
+            
+            if st.session_state.is_correct:
+                st.success("🎊 回答正确!", icon="✅")
+                st.markdown(f"**正确答案:** {level['answer']}")
+                if st.session_state.earned_reward:
+                    st.info(f"恭喜获得徽章: {st.session_state.earned_reward}")
+            else:
+                st.error("😢 回答错误!", icon="🚫")
+                st.markdown(f"**你的答案:** {st.session_state.selected_option}")
+                st.markdown(f"**正确答案:** {level['answer']}")
+                if st.session_state.wrong_attempts >= 2:
+                    st.warning("此题已用完尝试次数，不得分")
+            
+            # 进入下一关按钮
+            if st.button("➡️ 进入下一关", type="primary", use_container_width=True):
+                # 清空状态，进入下一关
+                st.session_state.selected_option = None
+                st.session_state.wrong_attempts = 0
+                st.session_state.show_result = False
+                st.session_state.current_level += 1
+                st.rerun()
+        else:
+            # ---- 答题环节 ----
+            # 显示剩余尝试次数
+            remaining_attempts = 2 - st.session_state.wrong_attempts
+            st.markdown(f"**剩余尝试次数:** {remaining_attempts} 次")
+
+            # 提交按钮
+            st.markdown("")
+            if st.button("提交答案", type="primary", use_container_width=True):
+                if selected == level["answer"]:
+                    # ---- 答对 ----
+                    st.session_state.is_correct = True
+                    st.session_state.earned_reward = None
+                    
+                    # 增加得分
+                    st.session_state.score += POINTS_PER_LEVEL
+
+                    # 获得徽章
+                    reward = level["reward"]
+                    if reward not in st.session_state.badges:
+                        st.session_state.badges.append(reward)
+                        st.session_state.earned_reward = reward
+
+                    # 显示答案结果
+                    st.session_state.show_result = True
+                    st.rerun()
+                else:
+                    # ---- 答错 ----
+                    st.session_state.is_correct = False
+                    st.session_state.wrong_attempts += 1
+                    
+                    if st.session_state.wrong_attempts >= 2:
+                        # 第二次答错，显示答案结果
+                        st.session_state.show_result = True
+                        st.rerun()
+                    else:
+                        # 第一次答错，不显示答案，允许再试一次
+                        st.error("回答错误，请重新选择答案!", icon="🚫")
+                        st.warning("提示: 仔细想想，再试一次 😊")
