@@ -2,9 +2,16 @@
 __pycache__/
 *.py[cod]
 *.pyc
+*.pyo
+*.pyd
 .env
 .venv/
 venv/
+.pytest_cache/
+.coverage
+*.egg-info/
+dist/
+build/
 
 # Streamlit
 .streamlit/
