@@ -456,7 +456,8 @@ elif st.session_state.current_level >= levels_count:
         # 显示游戏完成总结
         st.markdown(f"""
         ### 游戏完成总结
-        - **最终得分**: {st.session_state.score} 分（满分 {levels_count * POINTS_PER_LEVEL} 分）
+        - **总分**: {levels_count * 10} 分（假设所有题目一次答对）
+        - **你的得分**: {st.session_state.score} 分
         - **获得徽章**: {len(st.session_state.badges)} 个
         """)
         
@@ -569,9 +570,15 @@ else:
                     # 记录答题正确
                     st.session_state.is_correct = True
                     st.session_state.earned_reward = None
-                    
-                    # 增加得分
-                    st.session_state.score += POINTS_PER_LEVEL
+
+                    # 根据错误次数决定得分
+                    # 一次答对（wrong_attempts = 0）：10分
+                    # 错了一次才答对（wrong_attempts = 1）：5分
+                    if st.session_state.wrong_attempts == 0:
+                        points_earned = 10
+                    else:
+                        points_earned = 5
+                    st.session_state.score += points_earned
 
                     # 获得徽章
                     reward = level["reward"]
