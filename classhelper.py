@@ -131,6 +131,11 @@ if "earned_reward" not in st.session_state:
 if "success_message" not in st.session_state:
     st.session_state.success_message = None
 
+# balloons_shown: 气球动画是否已显示过
+# 防止通关后每次页面刷新都重复显示气球
+if "balloons_shown" not in st.session_state:
+    st.session_state.balloons_shown = False
+
 
 # ============================================================
 # 辅助函数
@@ -146,6 +151,7 @@ def reset_game():
     - 错误次数清零（wrong_attempts = 0）
     - 隐藏答案结果（show_result = False）
     - 清空选中选项（selected_option = None）
+    - 气球标记重置（balloons_shown = False）
     
     调用 st.rerun() 刷新页面以应用更改
     """
@@ -155,6 +161,7 @@ def reset_game():
     st.session_state.wrong_attempts = 0
     st.session_state.show_result = False
     st.session_state.selected_option = None
+    st.session_state.balloons_shown = False
     st.rerun()
 
 
@@ -458,8 +465,10 @@ elif st.session_state.current_level >= levels_count:
     # ---- 通关画面 ----
     # 当 current_level >= levels_count 时，说明用户已完成所有关卡
     
-    # 显示气球动画庆祝
-    st.balloons()
+    # 只在第一次通关时显示气球动画
+    if not st.session_state.balloons_shown:
+        st.balloons()
+        st.session_state.balloons_shown = True  # 标记气球已显示
     
     # 使用容器包装通关信息，带边框效果
     with st.container(border=True):
