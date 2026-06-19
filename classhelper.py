@@ -126,6 +126,11 @@ if "is_correct" not in st.session_state:
 if "earned_reward" not in st.session_state:
     st.session_state.earned_reward = None
 
+# success_message: 成功提示消息
+# 用于在页面刷新后显示操作成功的提示
+if "success_message" not in st.session_state:
+    st.session_state.success_message = None
+
 
 # ============================================================
 # 辅助函数
@@ -262,9 +267,15 @@ with st.sidebar:
                 }
                 # 将新关卡添加到关卡列表
                 st.session_state.levels.append(new_level)
-                st.success(f"已添加新关卡: {new_title}")
+                # 设置成功消息，刷新后显示
+                st.session_state.success_message = f"✅ 已添加新关卡: {new_title}"
                 # 刷新页面以显示新添加的关卡
                 st.rerun()
+
+        # 显示成功消息（在添加关卡按钮下方）
+        if st.session_state.success_message:
+            st.success(st.session_state.success_message)
+            st.session_state.success_message = None  # 显示后清除消息
 
     # ============================================================
     # 编辑/删除现有关卡
@@ -294,34 +305,35 @@ with st.sidebar:
             st.markdown("**修改关卡内容**")
 
             # 预填充当前关卡的数据
-            edit_title = st.text_input("标题", value=level["title"], key="edit_title")
+            # 使用动态 key（包含 selected_idx），确保选择关卡时组件会重新创建并显示新内容
+            edit_title = st.text_input("标题", value=level["title"], key=f"edit_title_{selected_idx}")
             edit_question = st.text_area(
                 "问题描述（支持 Markdown）",
                 value=level["question"],
                 height=120,
-                key="edit_question"
+                key=f"edit_question_{selected_idx}"
             )
 
             # 四个选项编辑框
             st.markdown("**四个选项**")
             col1, col2 = st.columns(2)
             with col1:
-                edit_opt_a = st.text_input("选项 A", value=level["options"][0], key="edit_opt_a")
-                edit_opt_b = st.text_input("选项 B", value=level["options"][1], key="edit_opt_b")
+                edit_opt_a = st.text_input("选项 A", value=level["options"][0], key=f"edit_opt_a_{selected_idx}")
+                edit_opt_b = st.text_input("选项 B", value=level["options"][1], key=f"edit_opt_b_{selected_idx}")
             with col2:
-                edit_opt_c = st.text_input("选项 C", value=level["options"][2], key="edit_opt_c")
-                edit_opt_d = st.text_input("选项 D", value=level["options"][3], key="edit_opt_d")
+                edit_opt_c = st.text_input("选项 C", value=level["options"][2], key=f"edit_opt_c_{selected_idx}")
+                edit_opt_d = st.text_input("选项 D", value=level["options"][3], key=f"edit_opt_d_{selected_idx}")
 
             # 正确答案和徽章编辑框
             edit_answer = st.text_input(
                 "正确答案",
                 value=level["answer"],
-                key="edit_answer"
+                key=f"edit_answer_{selected_idx}"
             )
             edit_reward = st.text_input(
                 "徽章名称",
                 value=level["reward"],
-                key="edit_reward"
+                key=f"edit_reward_{selected_idx}"
             )
 
             # 保存和删除按钮，使用两列布局
